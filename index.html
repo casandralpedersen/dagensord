@@ -640,6 +640,8 @@
   let viewMode = 'main';
   let showFavoritesOnly = false;
 
+  function readStorage(key)  { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
+  function writeStorage(key, words) { localStorage.setItem(key, JSON.stringify(words)); }
   function loadWords()        { try { return JSON.parse(localStorage.getItem(KEYS[section].words))   || []; } catch { return []; } }
   function saveWords(words)   { localStorage.setItem(KEYS[section].words,   JSON.stringify(words)); }
   function loadDeleted()      { try { return JSON.parse(localStorage.getItem(KEYS[section].deleted)) || []; } catch { return []; } }
@@ -759,7 +761,6 @@
     document.getElementById('trashBtn').classList.toggle('active', inDeleted);
     document.getElementById('sortBtn').style.display = inDeleted ? 'none' : '';
     document.getElementById('headerSearch').style.display = inDeleted ? 'none' : '';
-    document.getElementById('favFilterBtn').style.display = inDeleted ? 'none' : '';
     document.getElementById('restoreAllBtn').style.display = inDeleted ? 'inline-flex' : 'none';
     document.getElementById('emptyTrashBtn').style.display = inDeleted ? 'inline-flex' : 'none';
     document.getElementById('headerTitle').textContent = inDeleted ? 'Papirkurv' : 'Dagens Ord';
@@ -869,11 +870,7 @@
     card.dataset.id = entry.id;
 
     const hasContent = entry.def || entry.comment || entry.quote;
-    const favActive = entry.favorite ? 'active' : '';
     card.innerHTML = `
-      <button class="card-fav-btn ${favActive}" onclick="toggleFavorite(${entry.id}, event)" title="Favorit">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-      </button>
       <div class="card-word">${entry.word}</div>
       <div class="card-meta">${entry.date}</div>
       ${hasContent ? `<div class="card-expand">
@@ -944,11 +941,10 @@
     const words = getVisibleWords();
     list.innerHTML = '';
     if (words.length === 0) {
-      const favMsg = showFavoritesOnly;
       list.innerHTML = `
         <div class="empty">
-          <div class="empty-title">${searchTerm ? 'Ingen resultater' : favMsg ? 'Ingen favoritter endnu' : 'Ingen ord endnu'}</div>
-          <div class="empty-sub">${searchTerm ? 'Prøv et andet søgeord.' : favMsg ? 'Tryk ♡ på et kort for at tilføje det.' : 'Tryk + for at tilføje<br>dit første ord.'}</div>
+          <div class="empty-title">${searchTerm ? 'Ingen resultater' : 'Ingen ord endnu'}</div>
+          <div class="empty-sub">${searchTerm ? 'Prøv et andet søgeord.' : 'Tryk + for at tilføje<br>dit første ord.'}</div>
         </div>`;
     } else {
       words.forEach(entry => list.appendChild(createCard(entry)));
@@ -1109,8 +1105,7 @@
     if ((e.key === 'Enter') && (e.metaKey || e.ctrlKey)) submitModal();
   });
 
-  // Seed-data i kronologisk rækkefølge (id 1-40)
-  const SEED = [
+  const SEED_DA = [
     { id: 1,  word: "Minutiøs",          date: "9. november 2025",   def: "Grundig og omhyggelig; nøjagtig; detaljeret.",                                                                                    comment: "Særligt præcis og næsten pedantisk nuance, som de andre ord ikke helt dækker.", quote: "" },
     { id: 2,  word: "Pedantisk",          date: "9. november 2025",   def: "Meget, ofte overdrevent nøjeregnende; som går meget op i små og ubetydelige detaljer.",                                          comment: "Formelt for flueknepper. Minutiøs men negativt ladet.",                        quote: "" },
     { id: 3,  word: "Oxymoron",           date: "9. november 2025",   def: "Stilfigur hvor to i princippet uforenelige begreber kombineres, ofte som fremhævelse.",                                          comment: "",                                                                            quote: "Bittersød eller larmende tavshed." },
@@ -1152,12 +1147,62 @@
     { id: 34, word: "Aforisme",           date: "28. april 2026",     def: "Kort, prægnant og ofte vittigt formuleret tanke eller livsvisdom.",                                                               comment: "",                                                                            quote: "" },
     { id: 35, word: "Onomatopoietikon",   date: "14. maj 2026",       def: "Ord der efterligner den lyd det betegner.",                                                                                       comment: "",                                                                            quote: "Fx 'brusen', 'raslen' eller 'klokken ringer'." },
     { id: 41, word: "Kafkask",            date: "3. juni 2026",       def: "Så uigennemskuelig eller bureaukratisk at det virker absurd og meningsløst; mareridtsagtig.",                                       comment: "Fra Franz Kafka (1883-1924); hans roman 'Processen' beskriver en gådefuld bureaukratisk virkelighed. Ordet er kendt fra 1973.", quote: "Den manglende gennemskuelighed skyldes et kafkask kaos af udligningsordninger, som på kryds og tværs sender penge frem og tilbage mellem offentlige kasser." },
+    { id: 42, word: "Poppel",             date: "28. juni 2026",      def: "Stort, hurtigtvoksende løvtræ med små, ofte trekantede eller hjerteformede blade der bevæger sig ved selv svag vind; hører til pilefamilien.", comment: "Findes i mange arter, fx sølvpoppel og bævreasp.",             quote: "" },
+    { id: 43, word: "Esp",                date: "3. juli 2026",       def: "Løvtræ af poppelslægten hvis blade sidder på lange, flade stilke og derfor dirrer ved det mindste vindpust; bævreasp.",                    comment: "Kendt fra udtrykket 'at ryste som et espeløv'.",              quote: "" },
+    { id: 44, word: "Tsarisme",           date: "9. juli 2026",       def: "Enevældigt kejserstyre i Rusland under tsarerne; det russiske enevoldsstyre indtil revolutionen i 1917.",                                 comment: "Af 'tsar', der stammer fra det latinske 'caesar'.",           quote: "" },
+    { id: 45, word: "Tanniner",           date: "15. juli 2026",      def: "Garvestoffer; gruppe af sammensnærpende, let bitre plantestoffer der bl.a. findes i vindruers skind, kerner og stilke samt i te og bark.", comment: "Giver især rødvin dens snerpende, tørre karakter.",           quote: "" },
   ];
 
-  // Kun de nye ord (id 36-41) der kan mangle i eksisterende storage
-  const RECOVERY = SEED.filter(w => w.id >= 36);
+  const RECOVERY_DA = SEED_DA.filter(w => w.id >= 36);
 
-  function parseDanishDate(dateStr) {
+  const SEED_EN = [
+    { id: 101, word: "Burrowing",       date: "23 May 2026",  def: "Digging a hole or tunnel in the ground, especially for habitation. Also: searching through something by rummaging.", comment: "", quote: "" },
+    { id: 102, word: "Churning",        date: "24 May 2026",  def: "Stirring or agitating vigorously. Also: producing something in large quantities rapidly.", comment: "", quote: "" },
+    { id: 103, word: "Concocting",      date: "25 May 2026",  def: "Creating or preparing something by combining various ingredients or elements. Also: devising a story, plan, or excuse, often with the implication of fabrication.", comment: "", quote: "" },
+    { id: 104, word: "Deciphering",     date: "26 May 2026",  def: "Converting a coded or unclear message into intelligible language. Also: succeeding in understanding something that is difficult to read or interpret.", comment: "", quote: "" },
+    { id: 105, word: "Discombobulating", date: "27 May 2026", def: "Confusing, disconcerting, or upsetting someone.", comment: "", quote: "" },
+    { id: 106, word: "Effecting",       date: "28 May 2026",  def: "Causing something to happen; bringing about a result or change.", comment: "", quote: "" },
+    { id: 107, word: "Elucidating",     date: "29 May 2026",  def: "Making something clear; explaining.", comment: "", quote: "" },
+    { id: 108, word: "Embellishing",    date: "30 May 2026",  def: "Making something more attractive by adding decorative details. Also: adding fictitious or exaggerated details to a story.", comment: "", quote: "" },
+    { id: 109, word: "Enchanting",      date: "31 May 2026",  def: "Filling someone with great delight; charming. Also: putting under a spell.", comment: "", quote: "" },
+    { id: 110, word: "Forging",         date: "1 June 2026",  def: "Shaping metal by heating and hammering. Also: creating something strong through effort, or producing a fraudulent copy or imitation.", comment: "", quote: "" },
+    { id: 111, word: "Forming",         date: "2 June 2026",  def: "Bringing together parts or materials to create something; giving shape or structure to.", comment: "", quote: "" },
+    { id: 112, word: "Hatching",        date: "3 June 2026",  def: "Emerging from an egg. Also: devising a plan, plot, or idea, especially in secret.", comment: "", quote: "" },
+    { id: 113, word: "Ideating",        date: "4 June 2026",  def: "Forming ideas; thinking of or imagining something.", comment: "", quote: "" },
+    { id: 114, word: "Incubating",      date: "5 June 2026",  def: "Keeping eggs warm so they will hatch. Also: developing something slowly, nurturing an idea or project in its early stages, or carrying an infection before symptoms appear.", comment: "", quote: "" },
+    { id: 115, word: "Inferring",       date: "6 June 2026",  def: "Deducing or concluding something from evidence and reasoning rather than from direct statements.", comment: "", quote: "" },
+    { id: 116, word: "Metamorphosing",  date: "7 June 2026",  def: "Undergoing a complete transformation in form, nature, or character.", comment: "", quote: "" },
+    { id: 117, word: "Orchestrating",   date: "8 June 2026",  def: "Arranging a piece of music for performance by an orchestra. Also: planning and organizing a complex event or situation to produce a desired effect.", comment: "", quote: "" },
+    { id: 118, word: "Perusing",        date: "9 June 2026",  def: "Reading or examining something carefully and thoroughly.", comment: "", quote: "" },
+    { id: 119, word: "Pouncing",        date: "10 June 2026", def: "Springing or swooping suddenly so as to catch or attack.", comment: "", quote: "" },
+    { id: 120, word: "Precipitating",   date: "11 June 2026", def: "Causing an event or situation to happen suddenly or prematurely. Also: falling rapidly, or causing a substance to be deposited from a solution.", comment: "", quote: "" },
+    { id: 121, word: "Processing",      date: "12 June 2026", def: "Performing a series of mechanical or chemical operations on something to change or preserve it. Also: dealing with something using an official procedure.", comment: "", quote: "" },
+    { id: 122, word: "Proofing",        date: "13 June 2026", def: "Treating a surface with a substance to protect it, especially against water. Also: allowing dough to rise, or checking for errors.", comment: "", quote: "" },
+    { id: 123, word: "Propagating",     date: "14 June 2026", def: "Spreading and promoting an idea, theory, or knowledge widely. Also: breeding or reproducing organisms, or transmitting something onward.", comment: "", quote: "" },
+    { id: 124, word: "Puttering",       date: "15 June 2026", def: "Occupying oneself in a desultory, leisurely, or aimless way with minor tasks.", comment: "", quote: "" },
+    { id: 125, word: "Puzzling",        date: "16 June 2026", def: "Causing confusion or perplexity; difficult to understand. Also: thinking hard about something in order to understand it.", comment: "", quote: "" },
+    { id: 126, word: "Reticulating",    date: "17 June 2026", def: "Dividing or marking into a network or pattern of lines, squares, or mesh; forming a net-like structure.", comment: "", quote: "" },
+    { id: 127, word: "Ruminating",      date: "18 June 2026", def: "Thinking deeply and at length about something. Also: chewing the cud, as ruminant animals do.", comment: "", quote: "" },
+    { id: 128, word: "Scurrying",       date: "19 June 2026", def: "Moving hurriedly with short, quick steps.", comment: "", quote: "" },
+    { id: 129, word: "Shimmying",       date: "20 June 2026", def: "Dancing the shimmy. Also: shaking, vibrating, or wobbling.", comment: "", quote: "" },
+    { id: 130, word: "Swooping",        date: "21 June 2026", def: "Moving rapidly downward through the air, typically in a curve; making a sudden attack or raid.", comment: "", quote: "" },
+    { id: 131, word: "Thundering",      date: "22 June 2026", def: "Making a loud, deep, rumbling noise. Also: moving heavily and forcefully.", comment: "", quote: "" },
+    { id: 132, word: "Unfurling",       date: "23 June 2026", def: "Spreading out from a rolled or folded state; opening up or unrolling.", comment: "", quote: "" },
+    { id: 133, word: "Mysterious",      date: "9 November 2025", def: "Difficult or impossible to understand, explain, or identify.", comment: "Uklart / mystisk.", quote: "" },
+    { id: 134, word: "Perished",        date: "9 November 2025", def: "Died, especially in a sudden or untimely way.", comment: "Omkom / gik til grunde.", quote: "" },
+    { id: 135, word: "Allude",          date: "9 November 2025", def: "To suggest or call attention to indirectly; to hint at.", comment: "Henvise indirekte.", quote: "" },
+    { id: 136, word: "Burgeoning",      date: "9 November 2025", def: "Beginning to grow or increase rapidly; flourishing.", comment: "Voksende / hastigt fremvoksende.", quote: "" },
+    { id: 137, word: "Transcend",       date: "9 November 2025", def: "To go beyond the range or limits of; to rise above.", comment: "Overskride / hæve sig over.", quote: "" },
+    { id: 138, word: "Subverted",       date: "9 November 2025", def: "Undermined the power or authority of an established system.", comment: "Undermineret / undergravet.", quote: "" },
+    { id: 139, word: "Extolling",       date: "9 November 2025", def: "Praising enthusiastically.", comment: "Lovprisende / fremhævende.", quote: "" },
+    { id: 140, word: "Slyly",           date: "9 November 2025", def: "In a cunning and deceitful manner.", comment: "Listigt / snedigt.", quote: "" },
+    { id: 141, word: "Exasperates",     date: "9 November 2025", def: "Irritates someone intensely; makes someone feel frustrated.", comment: "Irriterer / frustrerer voldsomt.", quote: "" },
+  ];
+
+  const RECOVERY_EN = SEED_EN;
+
+  function parseSeedDate(sectionKey, dateStr) {
+    if (sectionKey === 'en') return new Date(dateStr);
     const months = { januar:0, februar:1, marts:2, april:3, maj:4, juni:5, juli:6, august:7, september:8, oktober:9, november:10, december:11 };
     try {
       const [dayPart, rest] = dateStr.split('. ');
@@ -1166,77 +1211,29 @@
     } catch { return new Date(0); }
   }
 
-  // Seed + recovery kører kun for dansk sektion
-  if (loadWords().length === 0) {
-    saveWords([...SEED].reverse());
-  } else {
-    const current    = loadWords();
-    const deletedIds = new Set(loadDeleted().map(w => w.id));
+  function initializeSection(sectionKey, seed, recovery) {
+    const wordsKey = KEYS[sectionKey].words;
+    const deletedKey = KEYS[sectionKey].deleted;
+    const current = readStorage(wordsKey);
+
+    if (current.length === 0) {
+      writeStorage(wordsKey, [...seed].reverse());
+      return;
+    }
+
+    const deletedIds = new Set(readStorage(deletedKey).map(w => w.id));
     const currentIds = new Set(current.map(w => w.id));
-    const toAdd      = RECOVERY.filter(w => !currentIds.has(w.id) && !deletedIds.has(w.id));
-    if (toAdd.length > 0) {
-      const userWords = current.filter(w => w.id > 1000);
-      const seedWords = [...current.filter(w => w.id <= 1000), ...toAdd]
-        .sort((a, b) => parseDanishDate(b.date) - parseDanishDate(a.date));
-      saveWords([...userWords, ...seedWords]);
-    }
+    const toAdd = recovery.filter(w => !currentIds.has(w.id) && !deletedIds.has(w.id));
+    if (toAdd.length === 0) return;
+
+    const userWords = current.filter(w => w.id > 1000);
+    const seedWords = [...current.filter(w => w.id <= 1000), ...toAdd]
+      .sort((a, b) => parseSeedDate(sectionKey, b.date) - parseSeedDate(sectionKey, a.date));
+    writeStorage(wordsKey, [...userWords, ...seedWords]);
   }
 
-  // Engelske seed-ord
-  const EN_SEED = [
-    { id: 101, word: "Mysterious",   date: "Nov 9, 2025",  def: "Difficult or impossible to understand, explain, or identify.", comment: "Uklart / mystisk.",                             quote: "" },
-    { id: 102, word: "Perished",     date: "Nov 9, 2025",  def: "Died, especially in a sudden or untimely way.",                comment: "Omkom / gik til grunde.",                      quote: "" },
-    { id: 103, word: "Allude",       date: "Nov 9, 2025",  def: "To suggest or call attention to indirectly; to hint at.",      comment: "Henvise indirekte.",                           quote: "" },
-    { id: 104, word: "Burgeoning",   date: "Nov 9, 2025",  def: "Beginning to grow or increase rapidly; flourishing.",          comment: "Voksende / hastigt fremvoksende.",             quote: "" },
-    { id: 105, word: "Transcend",    date: "Nov 9, 2025",  def: "To go beyond the range or limits of; to rise above.",         comment: "Overskride / hæve sig over.",                  quote: "" },
-    { id: 106, word: "Subverted",    date: "Nov 9, 2025",  def: "Undermined the power or authority of an established system.", comment: "Undermineret / undergravet.",                  quote: "" },
-    { id: 107, word: "Extolling",    date: "Nov 9, 2025",  def: "Praising enthusiastically.",                                   comment: "Lovprisende / fremhævende.",                   quote: "" },
-    { id: 108, word: "Slyly",        date: "Nov 9, 2025",  def: "In a cunning and deceitful manner.",                           comment: "Listigt / snedigt.",                           quote: "" },
-    { id: 109, word: "Exasperates",  date: "Nov 9, 2025",  def: "Irritates someone intensely; makes someone feel frustrated.", comment: "Irriterer / frustrerer voldsomt.",             quote: "" },
-  ];
-
-  section = 'en';
-  if (loadWords().length === 0) saveWords([...EN_SEED].reverse());
-  section = 'da';
-
-  // Auto-hent definition fra ordbog når man tilføjer et engelsk ord
-  async function fetchEnglishDef(word) {
-    try {
-      const res  = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const meanings = data[0]?.meanings;
-      if (!meanings?.length) return null;
-      const defs = meanings.flatMap(m =>
-        m.definitions.slice(0, 1).map(d => `(${m.partOfSpeech}) ${d.definition}`)
-      ).slice(0, 2);
-      const example = meanings[0]?.definitions[0]?.example || '';
-      return { def: defs.join(' '), quote: example };
-    } catch { return null; }
-  }
-
-  // Override addWord for english section to auto-fetch def
-  const _addWord = addWord;
-  async function addWord() {
-    if (section !== 'en') { _addWord(); return; }
-    const word = document.getElementById('inputWord').value.trim();
-    if (!word) return;
-    const defField    = document.getElementById('inputDef');
-    const quoteField  = document.getElementById('inputQuote');
-    const submitBtn   = document.getElementById('modalSubmitBtn');
-    if (!defField.value.trim()) {
-      submitBtn.textContent = 'Henter...';
-      submitBtn.disabled = true;
-      const result = await fetchEnglishDef(word);
-      submitBtn.textContent = 'Tilføj';
-      submitBtn.disabled = false;
-      if (result) {
-        if (!defField.value.trim())   defField.value   = result.def;
-        if (!quoteField.value.trim()) quoteField.value = result.quote;
-      }
-    }
-    _addWord();
-  }
+  initializeSection('da', SEED_DA, RECOVERY_DA);
+  initializeSection('en', SEED_EN, RECOVERY_EN);
 
   renderAll();
 </script>

@@ -11,7 +11,7 @@ Projektet er bygget iterativt i Claude.ai chat og er klar til videreudvikling i 
 ## Fil-struktur
 
 ```
-dagensord.html   ← hele appen (HTML + CSS + JS i én fil)
+index.html   ← hele appen (HTML + CSS + JS i én fil)
 ```
 
 Ingen andre filer. Alt er inline.
@@ -94,7 +94,7 @@ Listen gemmes som et array, **nyeste først** (index 0 = nyeste).
 
 ## Sådan kører du det lokalt
 
-1. Åbn `dagensord.html` direkte i Chrome eller Safari — ingen server nødvendig
+1. Åbn `index.html` direkte i Chrome eller Safari - ingen server nødvendig
 2. localStorage virker fuldt ud med `file://` protokol
 3. For at teste PWA-oplevelsen: brug en lokal server, fx `npx serve .` eller VS Code Live Server
 
@@ -102,7 +102,7 @@ Listen gemmes som et array, **nyeste først** (index 0 = nyeste).
 
 ## Sådan gemmes den til iPhone
 
-1. Overfør `dagensord.html` til iPhone (AirDrop eller iCloud)
+1. Overfør `index.html` til iPhone (AirDrop eller iCloud)
 2. Åbn i **Safari** (ikke Chrome — kun Safari understøtter "Tilføj til hjemskærm")
 3. Del-ikon → "Tilføj til hjemskærm"
 4. Appen åbner uden browser-chrome og opfører sig som en native app
