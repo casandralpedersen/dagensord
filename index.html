@@ -596,6 +596,131 @@
       color: var(--ink);
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
     }
+
+    /* ── Flashcards ── */
+    .flash-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 480px;
+      padding: 8px 20px calc(24px + var(--safe-bottom));
+    }
+
+    .flash-wrap.open { display: flex; }
+
+    .flash-modes {
+      display: flex;
+      background: rgba(45,37,32,0.06);
+      border-radius: 999px;
+      padding: 3px;
+    }
+
+    .flash-modes .section-tab {
+      padding: 6px 13px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .flash-card {
+      width: 100%;
+      height: min(50vh, 400px);
+      perspective: 1600px;
+      cursor: pointer;
+    }
+
+    .flash-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .flash-card.flipped .flash-inner { transform: rotateY(180deg); }
+    .flash-card.no-anim .flash-inner { transition: none; }
+
+    .flash-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: 0 3px 16px rgba(0,0,0,0.08);
+      padding: 34px 28px 62px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    .flash-back { transform: rotateY(180deg); }
+
+    .flash-label {
+      font-family: 'Playfair Display', serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #9A7A5A;
+      margin-bottom: 20px;
+    }
+
+    .flash-word {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+    }
+
+    .flash-def {
+      font-family: 'EB Garamond', serif;
+      font-size: 19px;
+      line-height: 1.7;
+      color: var(--def);
+    }
+
+    .flash-da {
+      margin-top: 14px;
+      font-family: 'EB Garamond', serif;
+      font-size: 17px;
+      font-style: italic;
+      color: #B0A090;
+    }
+
+    .flash-hint {
+      position: absolute;
+      bottom: 26px;
+      left: 28px;
+      right: 28px;
+      font-family: 'EB Garamond', serif;
+      font-size: 14px;
+      font-style: italic;
+      color: var(--muted);
+    }
+
+    .flash-next {
+      width: 100%;
+      background: var(--ink);
+      color: var(--card);
+      border: none;
+      border-radius: 16px;
+      padding: 17px;
+      font-family: 'Playfair Display', serif;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+
+    .flash-next:active { transform: scale(0.98); opacity: 0.85; }
   </style>
 </head>
 <body>
@@ -617,6 +742,9 @@
       <button class="fav-filter-btn" id="favFilterBtn" onclick="toggleFavFilter()" title="Vis kun favoritter">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       </button>
+      <button class="trash-btn" id="flashBtn" onclick="toggleFlash()" title="Flashcards">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="15" height="13" rx="2"/><path d="M7 4h13a2 2 0 0 1 2 2v11"/></svg>
+      </button>
       <button class="trash-btn" id="trashBtn" onclick="toggleView()" title="Papirkurv">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         <span class="deleted-badge" id="deletedBadge"></span>
@@ -625,6 +753,21 @@
   </div>
 
   <div class="card-list" id="cardList"></div>
+
+  <div class="flash-wrap" id="flashWrap">
+    <div class="flash-modes" id="flashModes">
+      <button class="section-tab active" data-mode="word" onclick="setFlashMode('word')">Ord → Betydning</button>
+      <button class="section-tab" data-mode="def" onclick="setFlashMode('def')">Betydning → Ord</button>
+      <button class="section-tab" data-mode="mix" onclick="setFlashMode('mix')">Bland</button>
+    </div>
+    <div class="flash-card" id="flashCard" onclick="flipFlash()">
+      <div class="flash-inner">
+        <div class="flash-face flash-front" id="flashFront"></div>
+        <div class="flash-face flash-back" id="flashBack"></div>
+      </div>
+    </div>
+    <button class="flash-next" onclick="nextFlash(event)">Næste kort</button>
+  </div>
 
   <button class="add-btn" id="addBtn" onclick="openModal()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
 
@@ -657,6 +800,11 @@
   let searchTerm = '';
   let viewMode = 'main';
   let showFavoritesOnly = false;
+  let flashMode = 'word';
+  let flashQueue = [];
+  let flashEntry = null;
+  let flashTotal = 0;
+  let flashShowWord = true;
 
   function readStorage(key)  { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
   function writeStorage(key, words) { localStorage.setItem(key, JSON.stringify(words)); }
@@ -671,18 +819,34 @@
     showFavoritesOnly = false;
     document.getElementById('searchInput').value = '';
     document.getElementById('favFilterBtn').classList.remove('active');
-    document.querySelectorAll('.section-tab').forEach(t => t.classList.toggle('active', t.dataset.section === s));
+    document.querySelectorAll('.section-tab[data-section]').forEach(t => t.classList.toggle('active', t.dataset.section === s));
+    if (viewMode === 'flash') {
+      flashQueue = [];
+      nextFlash();
+      return;
+    }
     if (viewMode === 'deleted') {
       viewMode = 'main';
-      document.getElementById('trashBtn').classList.remove('active');
-      document.getElementById('sortBtn').style.display = '';
-      document.getElementById('headerSearch').style.display = '';
-      document.getElementById('restoreAllBtn').style.display = 'none';
-      document.getElementById('emptyTrashBtn').style.display = 'none';
-      document.getElementById('headerTitle').textContent = 'Dagens Ord';
-      document.getElementById('addBtn').style.display = '';
+      applyViewChrome();
     }
     renderAll();
+  }
+
+  function applyViewChrome() {
+    const inDeleted = viewMode === 'deleted';
+    const inFlash   = viewMode === 'flash';
+    document.getElementById('trashBtn').classList.toggle('active', inDeleted);
+    document.getElementById('flashBtn').classList.toggle('active', inFlash);
+    document.getElementById('sortBtn').style.display        = inDeleted || inFlash ? 'none' : '';
+    document.getElementById('headerSearch').style.display   = inDeleted || inFlash ? 'none' : '';
+    document.getElementById('favFilterBtn').style.display   = inFlash ? 'none' : '';
+    document.getElementById('trashBtn').style.display       = inFlash ? 'none' : '';
+    document.getElementById('addBtn').style.display         = inDeleted || inFlash ? 'none' : '';
+    document.getElementById('restoreAllBtn').style.display  = inDeleted ? 'inline-flex' : 'none';
+    document.getElementById('emptyTrashBtn').style.display  = inDeleted ? 'inline-flex' : 'none';
+    document.getElementById('cardList').style.display       = inFlash ? 'none' : '';
+    document.getElementById('flashWrap').classList.toggle('open', inFlash);
+    document.getElementById('headerTitle').textContent = inDeleted ? 'Papirkurv' : inFlash ? 'Flashcards' : 'Dagens Ord';
   }
 
   function getVisibleWords() {
@@ -775,15 +939,19 @@
 
   function toggleView() {
     viewMode = viewMode === 'main' ? 'deleted' : 'main';
-    const inDeleted = viewMode === 'deleted';
-    document.getElementById('trashBtn').classList.toggle('active', inDeleted);
-    document.getElementById('sortBtn').style.display = inDeleted ? 'none' : '';
-    document.getElementById('headerSearch').style.display = inDeleted ? 'none' : '';
-    document.getElementById('restoreAllBtn').style.display = inDeleted ? 'inline-flex' : 'none';
-    document.getElementById('emptyTrashBtn').style.display = inDeleted ? 'inline-flex' : 'none';
-    document.getElementById('headerTitle').textContent = inDeleted ? 'Papirkurv' : 'Dagens Ord';
-    document.getElementById('addBtn').style.display = inDeleted ? 'none' : '';
+    applyViewChrome();
     renderAll();
+  }
+
+  function toggleFlash() {
+    viewMode = viewMode === 'flash' ? 'main' : 'flash';
+    applyViewChrome();
+    if (viewMode === 'flash') {
+      flashQueue = [];
+      nextFlash();
+    } else {
+      renderAll();
+    }
   }
 
   function updateCount(n, mode) {
@@ -986,6 +1154,67 @@
     updateCount(deleted.length, 'deleted');
   }
 
+  function setFlashMode(mode) {
+    flashMode = mode;
+    document.querySelectorAll('#flashModes .section-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+    flashQueue = [];
+    nextFlash();
+  }
+
+  function flipFlash() {
+    if (flashEntry) document.getElementById('flashCard').classList.toggle('flipped');
+  }
+
+  function nextFlash(e) {
+    if (e) e.stopPropagation();
+    const card = document.getElementById('flashCard');
+    card.classList.add('no-anim');
+    card.classList.remove('flipped');
+    void card.offsetWidth;
+    card.classList.remove('no-anim');
+
+    if (flashQueue.length === 0) {
+      const pool = loadWords().filter(w => w.def);
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      flashQueue = pool;
+      flashTotal = pool.length;
+    }
+    flashEntry = flashQueue.shift() || null;
+    flashShowWord = flashMode === 'mix' ? Math.random() < 0.5 : flashMode === 'word';
+    renderFlash();
+  }
+
+  function renderFlash() {
+    const front = document.getElementById('flashFront');
+    const back  = document.getElementById('flashBack');
+    const count = document.getElementById('wordCount');
+
+    if (!flashEntry) {
+      front.innerHTML = `<div class="flash-label">Tomt</div><div class="flash-def">Ingen ord med en definition i denne sektion endnu.</div>`;
+      back.innerHTML = '';
+      count.textContent = '';
+      return;
+    }
+
+    const wordFace = `
+      <div class="flash-label">Ordet</div>
+      <div class="flash-word">${flashEntry.word}</div>`;
+    const defFace = `
+      <div class="flash-label">Betydning</div>
+      <div class="flash-def">${flashEntry.def}</div>`;
+    const translation = flashEntry.comment ? `<div class="flash-da">${flashEntry.comment}</div>` : '';
+
+    front.innerHTML = (flashShowWord ? wordFace : defFace) +
+      `<div class="flash-hint">Tryk for at vende kortet</div>`;
+    back.innerHTML = (flashShowWord ? defFace : wordFace) + translation +
+      `<div class="flash-hint">Tryk for at vende tilbage</div>`;
+
+    count.textContent = `${flashTotal - flashQueue.length} af ${flashTotal}`;
+  }
+
   // Swipe-ned-for-at-lukke modal
   (function() {
     const overlay  = document.getElementById('modalOverlay');
@@ -1148,6 +1377,9 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeModal();
     if ((e.key === 'Enter') && (e.metaKey || e.ctrlKey)) submitModal();
+    if (viewMode !== 'flash' || document.getElementById('modalOverlay').classList.contains('open')) return;
+    if (e.key === ' ')          { e.preventDefault(); flipFlash(); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); nextFlash(); }
   });
 
   const SEED_DA = [
@@ -1201,38 +1433,38 @@
   const RECOVERY_DA = SEED_DA.filter(w => w.id >= 36);
 
   const SEED_EN = [
-    { id: 101, word: "Burrowing",       date: "23 May 2026",  def: "Digging a hole or tunnel in the ground, especially for habitation. Also: searching through something by rummaging.", comment: "", quote: "" },
-    { id: 102, word: "Churning",        date: "24 May 2026",  def: "Stirring or agitating vigorously. Also: producing something in large quantities rapidly.", comment: "", quote: "" },
-    { id: 103, word: "Concocting",      date: "25 May 2026",  def: "Creating or preparing something by combining various ingredients or elements. Also: devising a story, plan, or excuse, often with the implication of fabrication.", comment: "", quote: "" },
-    { id: 104, word: "Deciphering",     date: "26 May 2026",  def: "Converting a coded or unclear message into intelligible language. Also: succeeding in understanding something that is difficult to read or interpret.", comment: "", quote: "" },
-    { id: 105, word: "Discombobulating", date: "27 May 2026", def: "Confusing, disconcerting, or upsetting someone.", comment: "", quote: "" },
-    { id: 106, word: "Effecting",       date: "28 May 2026",  def: "Causing something to happen; bringing about a result or change.", comment: "", quote: "" },
-    { id: 107, word: "Elucidating",     date: "29 May 2026",  def: "Making something clear; explaining.", comment: "", quote: "" },
-    { id: 108, word: "Embellishing",    date: "30 May 2026",  def: "Making something more attractive by adding decorative details. Also: adding fictitious or exaggerated details to a story.", comment: "", quote: "" },
-    { id: 109, word: "Enchanting",      date: "31 May 2026",  def: "Filling someone with great delight; charming. Also: putting under a spell.", comment: "", quote: "" },
-    { id: 110, word: "Forging",         date: "1 June 2026",  def: "Shaping metal by heating and hammering. Also: creating something strong through effort, or producing a fraudulent copy or imitation.", comment: "", quote: "" },
-    { id: 111, word: "Forming",         date: "2 June 2026",  def: "Bringing together parts or materials to create something; giving shape or structure to.", comment: "", quote: "" },
-    { id: 112, word: "Hatching",        date: "3 June 2026",  def: "Emerging from an egg. Also: devising a plan, plot, or idea, especially in secret.", comment: "", quote: "" },
-    { id: 113, word: "Ideating",        date: "4 June 2026",  def: "Forming ideas; thinking of or imagining something.", comment: "", quote: "" },
-    { id: 114, word: "Incubating",      date: "5 June 2026",  def: "Keeping eggs warm so they will hatch. Also: developing something slowly, nurturing an idea or project in its early stages, or carrying an infection before symptoms appear.", comment: "", quote: "" },
-    { id: 115, word: "Inferring",       date: "6 June 2026",  def: "Deducing or concluding something from evidence and reasoning rather than from direct statements.", comment: "", quote: "" },
-    { id: 116, word: "Metamorphosing",  date: "7 June 2026",  def: "Undergoing a complete transformation in form, nature, or character.", comment: "", quote: "" },
-    { id: 117, word: "Orchestrating",   date: "8 June 2026",  def: "Arranging a piece of music for performance by an orchestra. Also: planning and organizing a complex event or situation to produce a desired effect.", comment: "", quote: "" },
-    { id: 118, word: "Perusing",        date: "9 June 2026",  def: "Reading or examining something carefully and thoroughly.", comment: "", quote: "" },
-    { id: 119, word: "Pouncing",        date: "10 June 2026", def: "Springing or swooping suddenly so as to catch or attack.", comment: "", quote: "" },
-    { id: 120, word: "Precipitating",   date: "11 June 2026", def: "Causing an event or situation to happen suddenly or prematurely. Also: falling rapidly, or causing a substance to be deposited from a solution.", comment: "", quote: "" },
-    { id: 121, word: "Processing",      date: "12 June 2026", def: "Performing a series of mechanical or chemical operations on something to change or preserve it. Also: dealing with something using an official procedure.", comment: "", quote: "" },
-    { id: 122, word: "Proofing",        date: "13 June 2026", def: "Treating a surface with a substance to protect it, especially against water. Also: allowing dough to rise, or checking for errors.", comment: "", quote: "" },
-    { id: 123, word: "Propagating",     date: "14 June 2026", def: "Spreading and promoting an idea, theory, or knowledge widely. Also: breeding or reproducing organisms, or transmitting something onward.", comment: "", quote: "" },
-    { id: 124, word: "Puttering",       date: "15 June 2026", def: "Occupying oneself in a desultory, leisurely, or aimless way with minor tasks.", comment: "", quote: "" },
-    { id: 125, word: "Puzzling",        date: "16 June 2026", def: "Causing confusion or perplexity; difficult to understand. Also: thinking hard about something in order to understand it.", comment: "", quote: "" },
-    { id: 126, word: "Reticulating",    date: "17 June 2026", def: "Dividing or marking into a network or pattern of lines, squares, or mesh; forming a net-like structure.", comment: "", quote: "" },
-    { id: 127, word: "Ruminating",      date: "18 June 2026", def: "Thinking deeply and at length about something. Also: chewing the cud, as ruminant animals do.", comment: "", quote: "" },
-    { id: 128, word: "Scurrying",       date: "19 June 2026", def: "Moving hurriedly with short, quick steps.", comment: "", quote: "" },
-    { id: 129, word: "Shimmying",       date: "20 June 2026", def: "Dancing the shimmy. Also: shaking, vibrating, or wobbling.", comment: "", quote: "" },
-    { id: 130, word: "Swooping",        date: "21 June 2026", def: "Moving rapidly downward through the air, typically in a curve; making a sudden attack or raid.", comment: "", quote: "" },
-    { id: 131, word: "Thundering",      date: "22 June 2026", def: "Making a loud, deep, rumbling noise. Also: moving heavily and forcefully.", comment: "", quote: "" },
-    { id: 132, word: "Unfurling",       date: "23 June 2026", def: "Spreading out from a rolled or folded state; opening up or unrolling.", comment: "", quote: "" },
+    { id: 101, word: "Burrowing",       date: "23 May 2026",  def: "Digging a hole or tunnel in the ground, especially for habitation. Also: searching through something by rummaging.", comment: "Gravende / borende sig ned.", quote: "" },
+    { id: 102, word: "Churning",        date: "24 May 2026",  def: "Stirring or agitating vigorously. Also: producing something in large quantities rapidly.", comment: "Piskende / omrørende; malende ud i store mængder.", quote: "" },
+    { id: 103, word: "Concocting",      date: "25 May 2026",  def: "Creating or preparing something by combining various ingredients or elements. Also: devising a story, plan, or excuse, often with the implication of fabrication.", comment: "Sammenblandende / opdigtende.", quote: "" },
+    { id: 104, word: "Deciphering",     date: "26 May 2026",  def: "Converting a coded or unclear message into intelligible language. Also: succeeding in understanding something that is difficult to read or interpret.", comment: "Tydende / afkodende.", quote: "" },
+    { id: 105, word: "Discombobulating", date: "27 May 2026", def: "Confusing, disconcerting, or upsetting someone.", comment: "Forvirrende / bringende ud af fatning.", quote: "" },
+    { id: 106, word: "Effecting",       date: "28 May 2026",  def: "Causing something to happen; bringing about a result or change.", comment: "Bevirkende / gennemførende.", quote: "" },
+    { id: 107, word: "Elucidating",     date: "29 May 2026",  def: "Making something clear; explaining.", comment: "Klarlæggende / forklarende.", quote: "" },
+    { id: 108, word: "Embellishing",    date: "30 May 2026",  def: "Making something more attractive by adding decorative details. Also: adding fictitious or exaggerated details to a story.", comment: "Udsmykkende / pyntende på sandheden.", quote: "" },
+    { id: 109, word: "Enchanting",      date: "31 May 2026",  def: "Filling someone with great delight; charming. Also: putting under a spell.", comment: "Fortryllende / betagende.", quote: "" },
+    { id: 110, word: "Forging",         date: "1 June 2026",  def: "Shaping metal by heating and hammering. Also: creating something strong through effort, or producing a fraudulent copy or imitation.", comment: "Smedende; forfalskende.", quote: "" },
+    { id: 111, word: "Forming",         date: "2 June 2026",  def: "Bringing together parts or materials to create something; giving shape or structure to.", comment: "Dannende / formende.", quote: "" },
+    { id: 112, word: "Hatching",        date: "3 June 2026",  def: "Emerging from an egg. Also: devising a plan, plot, or idea, especially in secret.", comment: "Udklækkende; udpønsende.", quote: "" },
+    { id: 113, word: "Ideating",        date: "4 June 2026",  def: "Forming ideas; thinking of or imagining something.", comment: "Idéudviklende.", quote: "" },
+    { id: 114, word: "Incubating",      date: "5 June 2026",  def: "Keeping eggs warm so they will hatch. Also: developing something slowly, nurturing an idea or project in its early stages, or carrying an infection before symptoms appear.", comment: "Udrugende / modnende.", quote: "" },
+    { id: 115, word: "Inferring",       date: "6 June 2026",  def: "Deducing or concluding something from evidence and reasoning rather than from direct statements.", comment: "Udledende / sluttende sig til.", quote: "" },
+    { id: 116, word: "Metamorphosing",  date: "7 June 2026",  def: "Undergoing a complete transformation in form, nature, or character.", comment: "Forvandlende sig fuldstændigt.", quote: "" },
+    { id: 117, word: "Orchestrating",   date: "8 June 2026",  def: "Arranging a piece of music for performance by an orchestra. Also: planning and organizing a complex event or situation to produce a desired effect.", comment: "Orkestrerende / iscenesættende.", quote: "" },
+    { id: 118, word: "Perusing",        date: "9 June 2026",  def: "Reading or examining something carefully and thoroughly.", comment: "Nærlæsende / granskende.", quote: "" },
+    { id: 119, word: "Pouncing",        date: "10 June 2026", def: "Springing or swooping suddenly so as to catch or attack.", comment: "Slående ned på / kastende sig over.", quote: "" },
+    { id: 120, word: "Precipitating",   date: "11 June 2026", def: "Causing an event or situation to happen suddenly or prematurely. Also: falling rapidly, or causing a substance to be deposited from a solution.", comment: "Fremskyndende / udløsende.", quote: "" },
+    { id: 121, word: "Processing",      date: "12 June 2026", def: "Performing a series of mechanical or chemical operations on something to change or preserve it. Also: dealing with something using an official procedure.", comment: "Bearbejdende / behandlende.", quote: "" },
+    { id: 122, word: "Proofing",        date: "13 June 2026", def: "Treating a surface with a substance to protect it, especially against water. Also: allowing dough to rise, or checking for errors.", comment: "Imprægnerende; hævende om dej.", quote: "" },
+    { id: 123, word: "Propagating",     date: "14 June 2026", def: "Spreading and promoting an idea, theory, or knowledge widely. Also: breeding or reproducing organisms, or transmitting something onward.", comment: "Udbredende / formerende.", quote: "" },
+    { id: 124, word: "Puttering",       date: "15 June 2026", def: "Occupying oneself in a desultory, leisurely, or aimless way with minor tasks.", comment: "Puslende / nussende omkring.", quote: "" },
+    { id: 125, word: "Puzzling",        date: "16 June 2026", def: "Causing confusion or perplexity; difficult to understand. Also: thinking hard about something in order to understand it.", comment: "Gådefuld / forvirrende; grublende.", quote: "" },
+    { id: 126, word: "Reticulating",    date: "17 June 2026", def: "Dividing or marking into a network or pattern of lines, squares, or mesh; forming a net-like structure.", comment: "Netdannende / opdelende i net.", quote: "" },
+    { id: 127, word: "Ruminating",      date: "18 June 2026", def: "Thinking deeply and at length about something. Also: chewing the cud, as ruminant animals do.", comment: "Grublende; drøvtyggende.", quote: "" },
+    { id: 128, word: "Scurrying",       date: "19 June 2026", def: "Moving hurriedly with short, quick steps.", comment: "Trippende / pilende af sted.", quote: "" },
+    { id: 129, word: "Shimmying",       date: "20 June 2026", def: "Dancing the shimmy. Also: shaking, vibrating, or wobbling.", comment: "Vrikkende / rystende.", quote: "" },
+    { id: 130, word: "Swooping",        date: "21 June 2026", def: "Moving rapidly downward through the air, typically in a curve; making a sudden attack or raid.", comment: "Styrtdykkende / slående ned.", quote: "" },
+    { id: 131, word: "Thundering",      date: "22 June 2026", def: "Making a loud, deep, rumbling noise. Also: moving heavily and forcefully.", comment: "Tordnende / drønende.", quote: "" },
+    { id: 132, word: "Unfurling",       date: "23 June 2026", def: "Spreading out from a rolled or folded state; opening up or unrolling.", comment: "Foldende sig ud / rullende ud.", quote: "" },
     { id: 133, word: "Mysterious",      date: "9 November 2025", def: "Difficult or impossible to understand, explain, or identify.", comment: "Uklart / mystisk.", quote: "" },
     { id: 134, word: "Perished",        date: "9 November 2025", def: "Died, especially in a sudden or untimely way.", comment: "Omkom / gik til grunde.", quote: "" },
     { id: 135, word: "Allude",          date: "9 November 2025", def: "To suggest or call attention to indirectly; to hint at.", comment: "Henvise indirekte.", quote: "" },
@@ -1287,10 +1519,23 @@
       return;
     }
 
+    const seedById = new Map(seed.map(w => [w.id, w]));
+    let backfilled = false;
+    current.forEach(entry => {
+      const seedEntry = seedById.get(entry.id);
+      if (!seedEntry) return;
+      ['def', 'comment', 'quote'].forEach(field => {
+        if (!entry[field] && seedEntry[field]) { entry[field] = seedEntry[field]; backfilled = true; }
+      });
+    });
+
     const deletedIds = new Set(readStorage(deletedKey).map(w => w.id));
     const currentIds = new Set(current.map(w => w.id));
     const toAdd = recovery.filter(w => !currentIds.has(w.id) && !deletedIds.has(w.id));
-    if (toAdd.length === 0) return;
+    if (toAdd.length === 0) {
+      if (backfilled) writeStorage(wordsKey, current);
+      return;
+    }
 
     const userWords = current.filter(w => w.id > 1000);
     const seedWords = [...current.filter(w => w.id <= 1000), ...toAdd]
