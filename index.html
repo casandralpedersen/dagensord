@@ -552,6 +552,23 @@
       cursor: pointer;
     }
 
+    .btn-lookup {
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 11px;
+      background: transparent;
+      border: 1px dashed var(--dashed);
+      border-radius: 12px;
+      font-family: 'EB Garamond', serif;
+      font-size: 15px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-lookup:hover:not(:disabled) { background: rgba(45,37,32,0.05); color: var(--ink); }
+    .btn-lookup:disabled { opacity: 0.55; cursor: default; }
+
     /* ── Section tabs ── */
     .section-tabs {
       display: flex;
@@ -618,6 +635,7 @@
       </div>
       <div class="modal-title" id="modalTitle">Nyt ord</div>
       <input type="text" id="inputWord" placeholder="Ordet..." autocomplete="off" autocorrect="off" spellcheck="false">
+      <button type="button" class="btn-lookup" id="lookupBtn" onclick="lookupWord()">Slå op automatisk</button>
       <textarea id="inputDef" rows="2" placeholder="Definition..."></textarea>
       <textarea id="inputComment" rows="2" placeholder="Din egen kommentar... (valgfrit)"></textarea>
       <textarea id="inputQuote" rows="2" placeholder="Citat... (valgfrit)"></textarea>
@@ -1064,6 +1082,33 @@
     else addWord();
   }
 
+  async function lookupWord() {
+    const input = document.getElementById('inputWord');
+    const word = input.value.trim();
+    if (!word) { input.focus(); return; }
+    const btn = document.getElementById('lookupBtn');
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Slår op...';
+    try {
+      const res = await fetch('/.netlify/functions/lookup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ word, lang: section }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (data.def)     document.getElementById('inputDef').value = data.def;
+      if (data.comment) document.getElementById('inputComment').value = data.comment;
+      if (data.quote)   document.getElementById('inputQuote').value = data.quote;
+      btn.textContent = label;
+      btn.disabled = false;
+    } catch {
+      btn.textContent = 'Kunne ikke slå op - udfyld manuelt';
+      setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 2500);
+    }
+  }
+
   function cap(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : str; }
 
   function addWord() {
@@ -1197,6 +1242,27 @@
     { id: 139, word: "Extolling",       date: "9 November 2025", def: "Praising enthusiastically.", comment: "Lovprisende / fremhævende.", quote: "" },
     { id: 140, word: "Slyly",           date: "9 November 2025", def: "In a cunning and deceitful manner.", comment: "Listigt / snedigt.", quote: "" },
     { id: 141, word: "Exasperates",     date: "9 November 2025", def: "Irritates someone intensely; makes someone feel frustrated.", comment: "Irriterer / frustrerer voldsomt.", quote: "" },
+    { id: 142, word: "Ambiguity",       date: "29 July 2026", def: "The quality of being open to more than one interpretation; a lack of clarity that cannot be settled from the context alone.", comment: "Uklarhed / flertydighed.", quote: "" },
+    { id: 143, word: "Dissonance",      date: "29 July 2026", def: "Lack of agreement or harmony, especially inconsistency between the beliefs one holds, or between one's actions and one's beliefs. Originally: a harsh, discordant combination of sounds.", comment: "Indre konflikt mellem to modstridende ting.", quote: "" },
+    { id: 144, word: "Visceral",        date: "29 July 2026", def: "Felt as a deep, instinctive bodily reaction rather than arrived at by reasoning. Literally: relating to the viscera, the internal organs.", comment: "Instinktiv / kropsligt følt.", quote: "" },
+    { id: 145, word: "Latent",          date: "29 July 2026", def: "Existing and capable of becoming active or apparent, but for now hidden or dormant.", comment: "Til stede, men skjult / ikke aktiveret endnu.", quote: "" },
+    { id: 146, word: "Culpable",        date: "29 July 2026", def: "Deserving blame; responsible for a fault or wrong in a way that can be held against you.", comment: "Skyldig / ansvarlig på en klandringsværdig måde.", quote: "" },
+    { id: 147, word: "Fallacy",         date: "29 July 2026", def: "A mistaken belief, especially one based on an unsound argument. In logic: erroneous reasoning that has the appearance of soundness.", comment: "Logisk fejlslutning.", quote: "" },
+    { id: 148, word: "Precarious",      date: "29 July 2026", def: "Not securely held or in position; dangerously likely to fall or collapse. Also: dependent on chance or on the will of another; uncertain.", comment: "Usikker / skrøbelig / kan vælte når som helst.", quote: "" },
+    { id: 149, word: "Insidious",       date: "29 July 2026", def: "Proceeding in a gradual, subtle way but with harmful effects; treacherous while appearing harmless.", comment: "Snigende skadelig.", quote: "" },
+    { id: 150, word: "Introspective",   date: "29 July 2026", def: "Given to examining one's own thoughts, feelings and motives.", comment: "Selvransagende.", quote: "" },
+    { id: 151, word: "Inadvertently",   date: "29 July 2026", def: "Without intention; accidentally, through oversight or inattention.", comment: "Utilsigtet / uden at mene det.", quote: "" },
+    { id: 152, word: "Vindicated",      date: "29 July 2026", def: "Cleared of blame, accusation or suspicion. Also: shown to be right or justified after doubt had been cast.", comment: "At få ret / blive frikendt efter tvivl.", quote: "" },
+    { id: 153, word: "Ostensibly",      date: "29 July 2026", def: "As appears or is stated to be, though not necessarily so in reality.", comment: "Tilsyneladende (men måske ikke reelt).", quote: "" },
+    { id: 154, word: "Conflate",        date: "29 July 2026", def: "To combine two or more things into one, especially to merge things that ought to be kept distinct or to treat them mistakenly as equivalent.", comment: "At slå to ting sammen som burde holdes adskilt.", quote: "" },
+    { id: 155, word: "Empirical",       date: "29 July 2026", def: "Based on observation, experience or experiment rather than on theory or pure logic.", comment: "Bygget på observation / data.", quote: "" },
+    { id: 156, word: "Anecdotal",       date: "29 July 2026", def: "Based on personal accounts or isolated cases rather than on systematic research, and therefore not necessarily reliable.", comment: "Baseret på enkelttilfælde / ikke systematisk bevis.", quote: "" },
+    { id: 157, word: "Dubious",         date: "29 July 2026", def: "Open to doubt or suspicion; of questionable quality or truth. Also, of a person: hesitating, unconvinced.", comment: "Tvivlsom.", quote: "" },
+    { id: 158, word: "Contentious",     date: "29 July 2026", def: "Likely to cause disagreement or argument; controversial. Also, of a person: given to quarrelling.", comment: "Omstridt / skaber uenighed.", quote: "" },
+    { id: 159, word: "Extrapolate",     date: "29 July 2026", def: "To extend known information in order to infer or estimate something beyond it, assuming that existing trends continue.", comment: "At udlede noget bredere fra et begrænset datapunkt.", quote: "" },
+    { id: 160, word: "Mitigate",        date: "29 July 2026", def: "To make something bad less severe, serious or painful.", comment: "At dæmpe / afbøde noget negativt.", quote: "" },
+    { id: 161, word: "Quintessential",  date: "29 July 2026", def: "Representing the most perfect or most typical example of a quality or class.", comment: "Selve indbegrebet af noget.", quote: "" },
+    { id: 162, word: "Tangential",      date: "29 July 2026", def: "Only slightly or indirectly relevant; diverging from the main point. In geometry: relating to or along a tangent.", comment: "Kun løst forbundet til emnet / en digression.", quote: "" },
   ];
 
   const RECOVERY_EN = SEED_EN;
