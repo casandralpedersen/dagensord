@@ -608,7 +608,9 @@
       padding: 8px 20px calc(24px + var(--safe-bottom));
     }
 
-    .flash-wrap.open { display: flex; }
+    .flash-wrap.open { display: flex; flex: 1; min-height: 0; }
+
+    body.flash-locked { overflow: hidden; height: 100dvh; }
 
     .flash-modes {
       display: flex;
@@ -625,9 +627,14 @@
 
     .flash-card {
       width: 100%;
-      height: min(50vh, 400px);
+      flex: 1;
+      min-height: 0;
+      max-height: 440px;
       perspective: 1600px;
-      cursor: pointer;
+      cursor: grab;
+      touch-action: pan-y;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .flash-inner {
@@ -721,6 +728,13 @@
     }
 
     .flash-next:active { transform: scale(0.98); opacity: 0.85; }
+
+    @media (max-height: 720px) {
+      .flash-word { font-size: 30px; }
+      .flash-def  { font-size: 17px; line-height: 1.6; }
+      .flash-face { padding: 24px 22px 52px; }
+      .flash-label { margin-bottom: 14px; }
+    }
   </style>
 </head>
 <body>
@@ -760,7 +774,7 @@
       <button class="section-tab" data-mode="def" onclick="setFlashMode('def')">Betydning → Ord</button>
       <button class="section-tab" data-mode="mix" onclick="setFlashMode('mix')">Bland</button>
     </div>
-    <div class="flash-card" id="flashCard" onclick="flipFlash()">
+    <div class="flash-card" id="flashCard">
       <div class="flash-inner">
         <div class="flash-face flash-front" id="flashFront"></div>
         <div class="flash-face flash-back" id="flashBack"></div>
@@ -846,6 +860,8 @@
     document.getElementById('emptyTrashBtn').style.display  = inDeleted ? 'inline-flex' : 'none';
     document.getElementById('cardList').style.display       = inFlash ? 'none' : '';
     document.getElementById('flashWrap').classList.toggle('open', inFlash);
+    document.body.classList.toggle('flash-locked', inFlash);
+    if (!inFlash) window.scrollTo(0, 0);
     document.getElementById('headerTitle').textContent = inDeleted ? 'Papirkurv' : inFlash ? 'Flashcards' : 'Dagens Ord';
   }
 
@@ -1154,6 +1170,70 @@
     updateCount(deleted.length, 'deleted');
   }
 
+  (function() {
+    const card = document.getElementById('flashCard');
+    let startX = 0, startY = 0, dx = 0, swiping = false, active = false;
+    const threshold = 80;
+
+    card.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      dx = 0;
+      active = true;
+      swiping = false;
+      card.setPointerCapture(e.pointerId);
+      card.style.transition = 'none';
+    });
+
+    card.addEventListener('pointermove', e => {
+      if (!active) return;
+      dx = e.clientX - startX;
+      if (!swiping) {
+        if (Math.abs(dx) < 8 || Math.abs(e.clientY - startY) > Math.abs(dx)) return;
+        swiping = true;
+      }
+      card.style.transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
+      card.style.opacity = `${Math.max(0.4, 1 - Math.abs(dx) / 260)}`;
+    });
+
+    function release() {
+      if (!active) return;
+      active = false;
+      if (!swiping) { flipFlash(); return; }
+      if (Math.abs(dx) > threshold) { slideToNext(Math.sign(dx)); return; }
+      card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      card.style.transform = '';
+      card.style.opacity = '';
+    }
+
+    card.addEventListener('pointerup', release);
+    card.addEventListener('pointercancel', () => {
+      if (!active) return;
+      active = false;
+      card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      card.style.transform = '';
+      card.style.opacity = '';
+    });
+  })();
+
+  function slideToNext(dir) {
+    const card = document.getElementById('flashCard');
+    card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+    card.style.transform = `translateX(${dir * 130}%) rotate(${dir * 8}deg)`;
+    card.style.opacity = '0';
+    setTimeout(() => {
+      card.style.transition = 'none';
+      card.style.transform = `translateX(${dir * 22}px)`;
+      nextFlash();
+      requestAnimationFrame(() => {
+        card.style.transition = 'transform 0.28s ease, opacity 0.28s ease';
+        card.style.transform = '';
+        card.style.opacity = '';
+      });
+    }, 190);
+  }
+
   function setFlashMode(mode) {
     flashMode = mode;
     document.querySelectorAll('#flashModes .section-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
@@ -1208,9 +1288,9 @@
     const translation = flashEntry.comment ? `<div class="flash-da">${flashEntry.comment}</div>` : '';
 
     front.innerHTML = (flashShowWord ? wordFace : defFace) +
-      `<div class="flash-hint">Tryk for at vende kortet</div>`;
+      `<div class="flash-hint">Tryk for svar · swipe for næste</div>`;
     back.innerHTML = (flashShowWord ? defFace : wordFace) + translation +
-      `<div class="flash-hint">Tryk for at vende tilbage</div>`;
+      `<div class="flash-hint">Swipe for næste kort</div>`;
 
     count.textContent = `${flashTotal - flashQueue.length} af ${flashTotal}`;
   }
